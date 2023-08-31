@@ -1,33 +1,26 @@
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder();
 
-builder.Services.AddE();
+builder.Services.AddSwaggerGen();
+builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
-app.MapGet("/haha", () =>
-{
-    Console.WriteLine("hello world!");
-    var resp = new Response
-    {
-        Name = "Jacek",
-        Age = 24
-    };
-
-    return resp;
-});
-
 app.UseSwagger();
-app.UseSwaggerUI(options =>
+app.UseSwaggerUI();
+
+app.MapGet("/", () =>
 {
-    options.SwaggerEndpoint("/v1/swagger.json", "My hello world app");
-});
+    var sampleResponse = new SampleResponse();
+    sampleResponse.Name = "Jacek";
+    sampleResponse.Age = 24;
+    
+    return sampleResponse;
+}).WithName("Get haha");
 
 app.Run();
 
-class Response
+class SampleResponse
 {
     public String Name { get; set; }
     public int Age { get; set; }
-    
 }
