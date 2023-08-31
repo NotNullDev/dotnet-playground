@@ -9,6 +9,13 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddRazorPages();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(
+        policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod().Build()
+    );
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -18,10 +25,13 @@ using (var scope = app.Services.CreateScope())
     {
         dbContext.SaveChanges();
     }
-}   
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();
+
+app.UseStaticFiles();
+app.UseCors();
 
 app.MapGet("/", () =>
 {
@@ -62,12 +72,12 @@ public class Note
     public bool Done { get; set; }
 }
 
-public class AppDb: DbContext
+public class AppDb : DbContext
 {
-    public AppDb(DbContextOptions<AppDb> options): base(options)
+    public AppDb(DbContextOptions<AppDb> options) : base(options)
     {
-            
     }
+
     public DbSet<Note> Notes => Set<Note>();
 }
 
