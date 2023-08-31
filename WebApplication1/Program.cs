@@ -7,6 +7,8 @@ builder.Services.AddDbContext<AppDb>(opt => opt.UseSqlite("Data Source=db.sqlite
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 
+builder.Services.AddRazorPages();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -23,10 +25,12 @@ app.UseSwaggerUI();
 
 app.MapGet("/", () =>
 {
-    var sampleResponse = new SampleResponse();
-    sampleResponse.Name = "Jacek";
-    sampleResponse.Age = 24;
-    
+    var sampleResponse = new SampleResponse
+    {
+        Name = "Jacek",
+        Age = 24
+    };
+
     return sampleResponse;
 }).WithName("Get haha");
 
@@ -46,6 +50,8 @@ products.MapGet("/create", async (AppDb db) =>
     return entityEntry.Entity;
 });
 
+app.MapRazorPages();
+
 app.Run();
 
 public class Note
@@ -56,7 +62,7 @@ public class Note
     public bool Done { get; set; }
 }
 
-class AppDb: DbContext
+public class AppDb: DbContext
 {
     public AppDb(DbContextOptions<AppDb> options): base(options)
     {
