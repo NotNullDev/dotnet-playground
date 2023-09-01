@@ -8,19 +8,20 @@ export interface paths {
   "/": {
     get: operations["Get haha"];
   };
-  "/products/": {
+  "/notes/": {
     get: {
       responses: {
         /** @description Success */
         200: {
           content: {
-            "application/json": (components["schemas"]["Note"])[];
+            "application/json": components["schemas"]["Note"][];
           };
         };
       };
     };
+    post: operations["create note"];
   };
-  "/products/create": {
+  "/notes/create": {
     get: {
       responses: {
         /** @description Success */
@@ -32,12 +33,31 @@ export interface paths {
       };
     };
   };
+  "/notes/{id}": {
+    delete: {
+      parameters: {
+        path: {
+          id: number;
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          content: never;
+        };
+      };
+    };
+  };
 }
 
 export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    CreateNoteRequest: {
+      title?: string | null;
+      content?: string | null;
+    };
     Note: {
       /** Format: int32 */
       id?: number;
@@ -58,6 +78,8 @@ export interface components {
   pathItems: never;
 }
 
+export type $defs = Record<string, never>;
+
 export type external = Record<string, never>;
 
 export interface operations {
@@ -68,6 +90,21 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["SampleResponse"];
+        };
+      };
+    };
+  };
+  "create note": {
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateNoteRequest"];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        content: {
+          "application/json": components["schemas"]["Note"];
         };
       };
     };

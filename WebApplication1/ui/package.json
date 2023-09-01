@@ -38,7 +38,9 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"clsx": "^2.0.0",
 		"openapi-fetch": "^0.7.5",
+		"tailwind-merge": "^1.14.0",
 		"typed-openapi": "^0.1.4"
 	}
 }

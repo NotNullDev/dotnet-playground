@@ -44,7 +44,7 @@ app.MapGet("/", () =>
     return sampleResponse;
 }).WithName("Get haha");
 
-var products = app.MapGroup("/products");
+var products = app.MapGroup("/notes");
 products.MapGet("/", async (AppDb db) => await db.Notes.ToListAsync());
 
 products.MapGet("/create", async (AppDb db) =>
@@ -60,6 +60,32 @@ products.MapGet("/create", async (AppDb db) =>
     return entityEntry.Entity;
 });
 
+products.MapPost("/",  async (CreateNoteRequest req, AppDb db) =>
+{
+    var note = new Note()
+    {
+        Content = req.Content,
+        Title = req.Title,
+        Done = false
+    };
+
+    var result = await db.AddAsync(note);
+    await db.SaveChangesAsync();
+
+    return result.Entity;
+}).WithName("create note");
+
+products.MapDelete("/{id}", async (int id, AppDb db) =>
+{
+    var entity = new Note(){Id = id};
+    db.Notes.Attach(entity);
+    db.Notes.Remove(entity);
+    db.SaveChanges();
+    
+    
+    return Results.NoContent();
+});
+
 app.MapRazorPages();
 
 app.Run();
@@ -70,6 +96,13 @@ public class Note
     public String Content { get; set; }
     public String Title { get; set; }
     public bool Done { get; set; }
+}
+
+
+public class CreateNoteRequest
+{
+    public string Title { get; set; }
+    public string Content { get; set; }
 }
 
 public class AppDb : DbContext
