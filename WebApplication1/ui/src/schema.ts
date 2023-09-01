@@ -55,14 +55,14 @@ export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
     CreateNoteRequest: {
-      title?: string | null;
-      content?: string | null;
+      title: string;
+      content: string;
     };
     Note: {
       /** Format: int32 */
       id?: number;
-      content?: string | null;
-      title?: string | null;
+      content: string;
+      title: string;
       done?: boolean;
     };
     SampleResponse: {

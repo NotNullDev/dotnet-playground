@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder();
@@ -82,7 +84,6 @@ products.MapDelete("/{id}", async (int id, AppDb db) =>
     db.Notes.Remove(entity);
     db.SaveChanges();
     
-    
     return Results.NoContent();
 });
 
@@ -93,7 +94,11 @@ app.Run();
 public class Note
 {
     public int Id { get; set; }
+    [Required]
+    [MinLength(1)]
     public String Content { get; set; }
+    [Required]
+    [MinLength(3)]
     public String Title { get; set; }
     public bool Done { get; set; }
 }
@@ -101,7 +106,11 @@ public class Note
 
 public class CreateNoteRequest
 {
+    [Required]
+    [MinLength(3)]
     public string Title { get; set; }
+    [Required]
+    [MinLength(1)]
     public string Content { get; set; }
 }
 
