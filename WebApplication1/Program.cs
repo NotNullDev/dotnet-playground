@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder();
@@ -62,8 +61,16 @@ products.MapGet("/create", async (AppDb db) =>
     return entityEntry.Entity;
 });
 
-products.MapPost("/",  async (CreateNoteRequest req, AppDb db) =>
+products.MapPost("/", async (CreateNoteRequest req, AppDb db) =>
 {
+    var validationResults = new List<ValidationResult>();
+
+    var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
+    if (!valid)
+    {
+        return Results.BadRequest(validationResults);
+    }
+
     var note = new Note()
     {
         Content = req.Content,
@@ -74,16 +81,16 @@ products.MapPost("/",  async (CreateNoteRequest req, AppDb db) =>
     var result = await db.AddAsync(note);
     await db.SaveChangesAsync();
 
-    return result.Entity;
+    return Results.Ok(result.Entity);
 }).WithName("create note");
 
 products.MapDelete("/{id}", async (int id, AppDb db) =>
 {
-    var entity = new Note(){Id = id};
+    var entity = new Note() { Id = id };
     db.Notes.Attach(entity);
     db.Notes.Remove(entity);
     db.SaveChanges();
-    
+
     return Results.NoContent();
 });
 
@@ -94,24 +101,16 @@ app.Run();
 public class Note
 {
     public int Id { get; set; }
-    [Required]
-    [MinLength(1)]
-    public String Content { get; set; }
-    [Required]
-    [MinLength(3)]
-    public String Title { get; set; }
+    [Required] [MinLength(1)] public String Content { get; set; }
+    [Required] [MinLength(3)] public String Title { get; set; }
     public bool Done { get; set; }
 }
 
 
 public class CreateNoteRequest
 {
-    [Required]
-    [MinLength(3)]
-    public string Title { get; set; }
-    [Required]
-    [MinLength(1)]
-    public string Content { get; set; }
+    [Required] [MinLength(3)] public string Title { get; set; }
+    [Required] [MinLength(1)] public string Content { get; set; }
 }
 
 public class AppDb : DbContext
