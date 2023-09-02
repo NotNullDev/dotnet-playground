@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder();
@@ -82,7 +83,10 @@ products.MapPost("/", async (CreateNoteRequest req, AppDb db) =>
     await db.SaveChangesAsync();
 
     return Results.Ok(result.Entity);
-}).WithName("create note");
+})
+    .Produces(200, typeof(Note))
+    .Produces(400, typeof(List<ValidationResult>))
+    .WithName("create note");
 
 products.MapDelete("/{id}", async (int id, AppDb db) =>
 {
