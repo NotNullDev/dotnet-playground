@@ -3,14 +3,15 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1;
 
 var builder = WebApplication.CreateBuilder();
 
-builder.Services.AddDbContext<AppDb>(opt => opt.UseSqlite("Data Source=db.sqlite"));
+builder.Services.AddDbContext<AppDb>(opt => { opt.UseSqlite("Data Source=db.sqlite"); });
 
-builder.Services.AddIdentity<AppUser, IdentityRole>()
+builder.Services.AddIdentity<AppUser, IdentityRole>((a) => { a.Stores.ProtectPersonalData = false; })
     .AddEntityFrameworkStores<AppDb>()
     .AddDefaultTokenProviders();
 
@@ -71,6 +72,16 @@ adminGroup.MapGet("/", () => { return "you must be an admin!"; });
 
 app.MapGet("/secured", () => { return Results.Ok("You are logged in!"); }).RequireAuthorization(loggedIn);
 
+app.MapGet("/me", async (ClaimsPrincipal user, UserManager<AppUser> userManager) =>
+    {
+        var authUser = await userManager.GetUserAsync(user);
+
+        return AppUserDto.from(authUser);
+    })
+    .RequireAuthorization(loggedIn)
+    .Produces(200, typeof(AppUserDto))
+    .Produces(403, typeof(string));
+
 app.MapGet("/login", async (SignInManager<AppUser> signInManager, UserManager<AppUser> userManager) =>
 {
     var user = new AppUser()
@@ -85,7 +96,7 @@ app.MapGet("/login", async (SignInManager<AppUser> signInManager, UserManager<Ap
         await signInManager.SignInAsync(foundUser, true);
         return Results.Redirect("/");
     }
-    
+
     var createdUsr = await signInManager.UserManager.CreateAsync(user, "Adsa31232W#@!!@#sad21#!@");
     if (createdUsr.Succeeded)
     {
@@ -95,9 +106,35 @@ app.MapGet("/login", async (SignInManager<AppUser> signInManager, UserManager<Ap
     {
         Console.WriteLine(createdUsr.Errors);
     }
-    
+
     return Results.Redirect("/");
-});
+}).Produces(303, typeof(string)).Produces(400, typeof(List<IdentityError>));
+
+app.MapPost("/register",
+    async (UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, AppDb db, RegisterRequest req) =>
+    {
+        var validationResults = new List<ValidationResult>();
+        var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
+        if (!valid)
+        {
+            return Results.BadRequest(validationResults);
+        }
+
+        var appuser = new AppUser();
+
+        var result = await userManager.CreateAsync(appuser);
+        if (!result.Succeeded)
+        {
+            return Results.BadRequest(result.Errors);
+        }
+
+        await signInManager.SignInAsync(appuser, true);
+
+        return Results.Redirect("/");
+    })
+    .Produces(400, typeof(List<ValidationResult>))
+    .Produces(400, typeof(List<IdentityError>))
+    .Produces(303, typeof(string));
 
 app.MapGet("/logout", async (SignInManager<AppUser> singInManager) =>
 {
@@ -109,19 +146,22 @@ app.MapGet("/", async (HttpContext ctx, UserManager<AppUser> userManager, Claims
 {
     if (ctx.User.Identity?.IsAuthenticated == false)
     {
-        return "You are not logged in.";
+        return Results.Unauthorized();
     }
 
     var foundUser = await userManager.GetUserAsync(user);
-    
-    
-    return $"Welcome back, {user.Identity?.Name ?? "ERROR"} {foundUser.PasswordHash ?? "idk"}" ;
+
+    return Results.Ok(AppUserDto.from(foundUser));
 }).WithName("Get haha");
 
-var products = app.MapGroup("/notes");
-products.MapGet("/", async (AppDb db) => await db.Notes.ToListAsync());
+var notesGroup = app.MapGroup("/notes").RequireAuthorization(loggedIn);
+notesGroup.MapGet("/", async (AppDb db, ClaimsPrincipal claimsPrincipal, UserManager<AppUser> userManager) =>
+{
+    var user = await userManager.GetUserAsync(claimsPrincipal);
+    return await db.Notes.Where(n => n.Owner.Id == user.Id).ToListAsync();
+});
 
-products.MapGet("/create", async (AppDb db) =>
+notesGroup.MapGet("/create", async (AppDb db) =>
 {
     var newNote = new Note();
     newNote.Content = "hehhe";
@@ -134,33 +174,37 @@ products.MapGet("/create", async (AppDb db) =>
     return entityEntry.Entity;
 });
 
-products.MapPost("/", async (CreateNoteRequest req, AppDb db) =>
-    {
-        var validationResults = new List<ValidationResult>();
-
-        var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
-        if (!valid)
+notesGroup.MapPost("/",
+        async ([FromBody] CreateNoteRequest req, AppDb db, ClaimsPrincipal claimsPrincipal,
+            UserManager<AppUser> userManager) =>
         {
-            return Results.BadRequest(validationResults);
-        }
+            var user = await userManager.GetUserAsync(claimsPrincipal);
+            var validationResults = new List<ValidationResult>();
 
-        var note = new Note()
-        {
-            Content = req.Content,
-            Title = req.Title,
-            Done = false
-        };
+            var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
+            if (!valid)
+            {
+                return Results.BadRequest(validationResults);
+            }
 
-        var result = await db.AddAsync(note);
-        await db.SaveChangesAsync();
+            var note = new Note()
+            {
+                Content = req.Content,
+                Title = req.Title,
+                Done = false,
+                Owner = user,
+            };
 
-        return Results.Ok(result.Entity);
-    })
+            var result = await db.AddAsync(note);
+            await db.SaveChangesAsync();
+
+            return Results.Ok(result.Entity);
+        })
     .Produces(200, typeof(Note))
     .Produces(400, typeof(List<ValidationResult>))
     .WithName("create note");
 
-products.MapDelete("/{id}", async (int id, AppDb db) =>
+notesGroup.MapDelete("/{id}", async (int id, AppDb db) =>
 {
     var entity = new Note() { Id = id };
     db.Notes.Attach(entity);
@@ -174,12 +218,20 @@ app.MapRazorPages();
 
 app.Run();
 
+public class RegisterRequest
+{
+    [Required] [EmailAddress] public String Email { get; set; }
+
+    [Required] [MinLength(6)] public String Password { get; set; }
+}
+
 public class Note
 {
     public int Id { get; set; }
     [Required] [MinLength(1)] public String Content { get; set; }
     [Required] [MinLength(3)] public String Title { get; set; }
     public bool Done { get; set; }
+    public AppUser Owner { get; set; }
 }
 
 
