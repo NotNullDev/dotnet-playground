@@ -1,10 +1,30 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder();
 
 builder.Services.AddDbContext<AppDb>(opt => opt.UseSqlite("Data Source=db.sqlite"));
+
+const string authScheme = "cookie";
+const string loggedIn = "must-be-authenticated";
+const string adminRole = "role-admin";
+builder.Services.AddAuthentication(authScheme).AddCookie(authScheme, (options) =>
+{
+    options.LoginPath = "/login";
+    options.LogoutPath = "/logout";
+    options.AccessDeniedPath = "/access-denied";
+    
+    options.ReturnUrlParameter = "returnUrl";
+});
+builder.Services.AddAuthorization((options) =>
+{
+    options.AddPolicy(loggedIn, b => b.RequireAuthenticatedUser());
+    options.AddPolicy(adminRole, b => b.RequireClaim("role", "admin"));
+});
 
 builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
@@ -35,15 +55,50 @@ app.UseSwaggerUI();
 app.UseStaticFiles();
 app.UseCors();
 
-app.MapGet("/", () =>
-{
-    var sampleResponse = new SampleResponse
-    {
-        Name = "Jacek",
-        Age = 24
-    };
+app.UseAuthentication();
+app.UseAuthorization();
 
-    return sampleResponse;
+var adminGroup = app.MapGroup("/admin");
+adminGroup.RequireAuthorization(policyNames: new[] { loggedIn, adminRole });
+
+adminGroup.MapGet("/", () =>
+{
+    return "you must be an admin!";
+});
+
+app.MapGet("/secured", () =>
+{
+    return Results.Ok("You are logged in!");
+}).RequireAuthorization(loggedIn);
+
+app.MapGet("/login", async (HttpContext ctx) =>
+{
+    var claims = new List<Claim>();
+    claims.Add(new Claim("name", "Jacek"));
+
+    var identity = new ClaimsIdentity(claims, authScheme);
+    
+    var principal = new ClaimsPrincipal(identity);
+
+    await ctx.SignInAsync(authScheme, principal);
+    
+    return "You are logged in!";
+});
+
+app.MapGet("/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(authScheme);
+    return Results.Redirect("/");
+});
+
+app.MapGet("/", (HttpContext ctx) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated == false)
+    {
+        return "You are not logged in.";
+    }
+
+    return "You are logged in!";
 }).WithName("Get haha");
 
 var products = app.MapGroup("/notes");
