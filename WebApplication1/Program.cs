@@ -1,23 +1,29 @@
 using System.ComponentModel.DataAnnotations;
-using System.Net;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using WebApplication1;
 
 var builder = WebApplication.CreateBuilder();
 
 builder.Services.AddDbContext<AppDb>(opt => opt.UseSqlite("Data Source=db.sqlite"));
 
+builder.Services.AddIdentity<AppUser, IdentityRole>()
+    .AddEntityFrameworkStores<AppDb>()
+    .AddDefaultTokenProviders();
+
 const string authScheme = "cookie";
 const string loggedIn = "must-be-authenticated";
 const string adminRole = "role-admin";
+
 builder.Services.AddAuthentication(authScheme).AddCookie(authScheme, (options) =>
 {
     options.LoginPath = "/login";
     options.LogoutPath = "/logout";
     options.AccessDeniedPath = "/access-denied";
-    
+
     options.ReturnUrlParameter = "returnUrl";
 });
 builder.Services.AddAuthorization((options) =>
@@ -61,44 +67,55 @@ app.UseAuthorization();
 var adminGroup = app.MapGroup("/admin");
 adminGroup.RequireAuthorization(policyNames: new[] { loggedIn, adminRole });
 
-adminGroup.MapGet("/", () =>
-{
-    return "you must be an admin!";
-});
+adminGroup.MapGet("/", () => { return "you must be an admin!"; });
 
-app.MapGet("/secured", () =>
-{
-    return Results.Ok("You are logged in!");
-}).RequireAuthorization(loggedIn);
+app.MapGet("/secured", () => { return Results.Ok("You are logged in!"); }).RequireAuthorization(loggedIn);
 
-app.MapGet("/login", async (HttpContext ctx) =>
+app.MapGet("/login", async (SignInManager<AppUser> signInManager, UserManager<AppUser> userManager) =>
 {
-    var claims = new List<Claim>();
-    claims.Add(new Claim("name", "Jacek"));
+    var user = new AppUser()
+    {
+        Email = "aa@gmail.com",
+        UserName = "JohnDoeHaha"
+    };
 
-    var identity = new ClaimsIdentity(claims, authScheme);
+    var foundUser = await signInManager.UserManager.FindByEmailAsync(user.Email);
+    if (foundUser != null)
+    {
+        await signInManager.SignInAsync(foundUser, true);
+        return Results.Redirect("/");
+    }
     
-    var principal = new ClaimsPrincipal(identity);
-
-    await ctx.SignInAsync(authScheme, principal);
+    var createdUsr = await signInManager.UserManager.CreateAsync(user, "Adsa31232W#@!!@#sad21#!@");
+    if (createdUsr.Succeeded)
+    {
+        await signInManager.SignInAsync(user, true);
+    }
+    else
+    {
+        Console.WriteLine(createdUsr.Errors);
+    }
     
-    return "You are logged in!";
-});
-
-app.MapGet("/logout", async (HttpContext ctx) =>
-{
-    await ctx.SignOutAsync(authScheme);
     return Results.Redirect("/");
 });
 
-app.MapGet("/", (HttpContext ctx) =>
+app.MapGet("/logout", async (SignInManager<AppUser> singInManager) =>
+{
+    await singInManager.SignOutAsync();
+    return Results.Redirect("/");
+});
+
+app.MapGet("/", async (HttpContext ctx, UserManager<AppUser> userManager, ClaimsPrincipal user) =>
 {
     if (ctx.User.Identity?.IsAuthenticated == false)
     {
         return "You are not logged in.";
     }
 
-    return "You are logged in!";
+    var foundUser = await userManager.GetUserAsync(user);
+    
+    
+    return $"Welcome back, {user.Identity?.Name ?? "ERROR"} {foundUser.PasswordHash ?? "idk"}" ;
 }).WithName("Get haha");
 
 var products = app.MapGroup("/notes");
@@ -118,27 +135,27 @@ products.MapGet("/create", async (AppDb db) =>
 });
 
 products.MapPost("/", async (CreateNoteRequest req, AppDb db) =>
-{
-    var validationResults = new List<ValidationResult>();
-
-    var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
-    if (!valid)
     {
-        return Results.BadRequest(validationResults);
-    }
+        var validationResults = new List<ValidationResult>();
 
-    var note = new Note()
-    {
-        Content = req.Content,
-        Title = req.Title,
-        Done = false
-    };
+        var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
+        if (!valid)
+        {
+            return Results.BadRequest(validationResults);
+        }
 
-    var result = await db.AddAsync(note);
-    await db.SaveChangesAsync();
+        var note = new Note()
+        {
+            Content = req.Content,
+            Title = req.Title,
+            Done = false
+        };
 
-    return Results.Ok(result.Entity);
-})
+        var result = await db.AddAsync(note);
+        await db.SaveChangesAsync();
+
+        return Results.Ok(result.Entity);
+    })
     .Produces(200, typeof(Note))
     .Produces(400, typeof(List<ValidationResult>))
     .WithName("create note");
@@ -172,7 +189,7 @@ public class CreateNoteRequest
     [Required] [MinLength(1)] public string Content { get; set; }
 }
 
-public class AppDb : DbContext
+public class AppDb : IdentityDbContext<AppUser>
 {
     public AppDb(DbContextOptions<AppDb> options) : base(options)
     {
