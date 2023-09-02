@@ -5,6 +5,106 @@
 
 
 export interface paths {
+  "/admin/": {
+    get: {
+      responses: {
+        /** @description Success */
+        200: {
+          content: {
+            "text/plain": string;
+          };
+        };
+      };
+    };
+  };
+  "/secured": {
+    get: {
+      responses: {
+        /** @description Success */
+        200: {
+          content: never;
+        };
+      };
+    };
+  };
+  "/me": {
+    get: {
+      responses: {
+        /** @description Success */
+        200: {
+          content: {
+            "application/json": components["schemas"]["AppUserDto"];
+          };
+        };
+        /** @description Forbidden */
+        403: {
+          content: {
+            "application/json": string;
+          };
+        };
+      };
+    };
+  };
+  "/login": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["LoginRequest"];
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          content: {
+            "application/json": components["schemas"]["AppUserDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["IdentityError"][];
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          content: never;
+        };
+      };
+    };
+  };
+  "/register": {
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["RegisterRequest"];
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          content: {
+            "application/json": components["schemas"]["AppUserDto"];
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          content: {
+            "application/json": components["schemas"]["IdentityError"][];
+          };
+        };
+      };
+    };
+  };
+  "/logout": {
+    get: {
+      responses: {
+        /** @description Success */
+        200: {
+          content: never;
+        };
+      };
+    };
+  };
   "/": {
     get: operations["Get haha"];
   };
@@ -54,9 +154,61 @@ export type webhooks = Record<string, never>;
 
 export interface components {
   schemas: {
+    AppUser: {
+      id?: string | null;
+      userName?: string | null;
+      normalizedUserName?: string | null;
+      email?: string | null;
+      normalizedEmail?: string | null;
+      emailConfirmed?: boolean;
+      passwordHash?: string | null;
+      securityStamp?: string | null;
+      concurrencyStamp?: string | null;
+      phoneNumber?: string | null;
+      phoneNumberConfirmed?: boolean;
+      twoFactorEnabled?: boolean;
+      /** Format: date-time */
+      lockoutEnd?: string | null;
+      lockoutEnabled?: boolean;
+      /** Format: int32 */
+      accessFailedCount?: number;
+      dateOfBirth?: components["schemas"]["DateOnly"];
+    };
+    AppUserDto: {
+      id?: string | null;
+      email?: string | null;
+      userName?: string | null;
+    };
     CreateNoteRequest: {
       title: string;
       content: string;
+    };
+    DateOnly: {
+      /** Format: int32 */
+      year?: number;
+      /** Format: int32 */
+      month?: number;
+      /** Format: int32 */
+      day?: number;
+      dayOfWeek?: components["schemas"]["DayOfWeek"];
+      /** Format: int32 */
+      dayOfYear?: number;
+      /** Format: int32 */
+      dayNumber?: number;
+    };
+    /**
+     * Format: int32
+     * @enum {integer}
+     */
+    DayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    IdentityError: {
+      code?: string | null;
+      description?: string | null;
+    };
+    LoginRequest: {
+      /** Format: email */
+      email: string;
+      password: string;
     };
     Note: {
       /** Format: int32 */
@@ -64,11 +216,16 @@ export interface components {
       content: string;
       title: string;
       done?: boolean;
+      owner?: components["schemas"]["AppUser"];
     };
-    SampleResponse: {
-      name?: string | null;
-      /** Format: int32 */
-      age?: number;
+    RegisterRequest: {
+      /** Format: email */
+      email: string;
+      password: string;
+    };
+    ValidationResult: {
+      memberNames?: string[] | null;
+      errorMessage?: string | null;
     };
   };
   responses: never;
@@ -88,9 +245,7 @@ export interface operations {
     responses: {
       /** @description Success */
       200: {
-        content: {
-          "application/json": components["schemas"]["SampleResponse"];
-        };
+        content: never;
       };
     };
   };
@@ -105,6 +260,12 @@ export interface operations {
       200: {
         content: {
           "application/json": components["schemas"]["Note"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        content: {
+          "application/json": components["schemas"]["ValidationResult"][];
         };
       };
     };

@@ -1,3 +1,8 @@
-@tailwind base;
+ @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.bg {
+    backdrop-filter: blur(2px) brightness(90%);
+    box-shadow: 1px 1px 8px 1px #020617;
+}
