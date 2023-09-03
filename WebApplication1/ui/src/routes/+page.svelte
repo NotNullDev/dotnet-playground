@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { DELETE, GET, POST } from '$lib/api';
+	import { sendMessage } from '$lib/chat';
 	import Button from '$lib/components/button.svelte';
 	import Input from '$lib/components/input.svelte';
 	import TextArea from '$lib/components/text-area.svelte';
 	import { showToast } from '$lib/components/toast/toast-store';
+	import { appStore } from '$lib/store';
 	import { onMount } from 'svelte';
 	import type { components } from '../schema';
 
@@ -65,45 +67,80 @@
 
 		refetchData();
 	}
+
+	let chatMessage = {
+		message: ''
+	};
+
+	async function send() {
+		try {
+			await sendMessage(chatMessage.message);
+			chatMessage.message = '';
+		} catch (e) {
+			showToast('Failed to send chat message', 'Unknown error');
+		}
+	}
 </script>
 
-<div class="flex justify-around">
-	<div class="flex flex-col rounded-md p-4 gap-1">
-		<h1>New note</h1>
-		<Input
-			label="Title"
-			placeholder="Title"
-			classes={{
-				root: 'max-w-[200px]'
-			}}
-			bind:value={newNoteData.title}
-		/>
-		<TextArea
-			label="Description"
-			placeholder="Description"
-			classes={{
-				root: 'max-w-[200px]'
-			}}
-			bind:value={newNoteData.content}
-		/>
-		<Button
-			classes={{
-				root: 'max-w-[200px]'
-			}}
-			on:click={createNote}>Create</Button
-		>
+<div class="flex justify-around p-12 flex-col gap-12 flex-1 overflow-hidden h-full">
+	<div class="flex gap-12">
+		<div class="flex flex-col rounded-md p-4 gap-2 bg px-12 h-min">
+			<h1 class="text-2xl mb-3">New note</h1>
+			<Input
+				label="Title"
+				placeholder="Title"
+				classes={{
+					root: 'max-w-[200px]'
+				}}
+				bind:value={newNoteData.title}
+			/>
+			<TextArea
+				label="Description"
+				placeholder="Description"
+				classes={{
+					root: 'max-w-[200px]'
+				}}
+				bind:value={newNoteData.content}
+			/>
+			<Button
+				classes={{
+					root: 'max-w-[200px] mt-1'
+				}}
+				on:click={createNote}>Create</Button
+			>
+		</div>
 	</div>
 
-	<div class="flex flex-col-reverse gap-4 p-24">
-		{#each notes as n}
-			<div class="flex gap-2 items-center">
-				<div>
-					{n.id}
-					{n.content}
-					{n.title}
-				</div>
-				<Button on:click={() => deleteNote(n.id)}>Delete</Button>
+	<div class="flex gap-12 flex-1 overflow-hidden h-full justify-around">
+		<div class="flex flex-col bg px-12 py-3 overflow-hidden h-[50vh] w-[40vw]">
+			<h2 class="text-2xl my-4">Notes</h2>
+			<div class="flex flex-col-reverse gap-4 w-full overflow-y-auto py-2">
+				{#each notes.reverse() as n}
+					<div class="flex gap-2 items-center bg p-2 mx-4">
+						<div class="flex-1 p-2 gap-2 flex flex-col w-full">
+							<h3 class="w-full text-3xl">{n.title}</h3>
+							<pre class="w-full">{n.content}</pre>
+						</div>
+						<Button on:click={() => deleteNote(n.id)}>Delete</Button>
+					</div>
+				{/each}
 			</div>
-		{/each}
+		</div>
+
+		<div class="bg p-4 flex flex-col h-[50vh] w-[40vw]">
+			<h2 class="text-3xl">Chat</h2>
+			<div class="flex flex-col-reverse flex-1 overflow-y-auto p-4">
+				{#each $appStore.chat.messages.reverse() as msg}
+					<div class="bg w-full p-4">
+						<div class="text-2xl">{msg.author}</div>
+						<pre>{msg.content}</pre>
+					</div>
+				{/each}
+			</div>
+			<div class="flex justify-between items-end gap-3">
+				<TextArea bind:value={chatMessage.message} classes={{ root: 'flex-1' }} />
+				<Button classes={{ root: 'w-[60px] h-min' }} on:click={send}>Send</Button>
+			</div>
+		</div>
 	</div>
 </div>

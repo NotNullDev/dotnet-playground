@@ -15,6 +15,7 @@
 	<span class={tw(classes.span)}>{label}</span>
 	<textarea
 		{placeholder}
+		rows="1"
 		class={tw('bg-slate-800 rounded-md px-2 py-1', classes.textarea)}
 		bind:value
 	/>

@@ -38,6 +38,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@microsoft/signalr": "^7.0.10",
 		"clsx": "^2.0.0",
 		"openapi-fetch": "^0.7.5",
 		"tailwind-merge": "^1.14.0",

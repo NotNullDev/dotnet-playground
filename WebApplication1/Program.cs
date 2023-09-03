@@ -14,6 +14,8 @@ builder.Services.AddIdentity<AppUser, IdentityRole>((a) => { a.Stores.ProtectPer
     .AddEntityFrameworkStores<AppDb>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddSignalR();
+
 const string authScheme = "cookie";
 const string loggedIn = "must-be-authenticated";
 const string adminRole = "role-admin";
@@ -96,11 +98,13 @@ app.MapPost("/login",
         if (foundUser != null)
         {
             await signInManager.SignInAsync(foundUser, true);
-            return Results.Ok(AppUserDto.from(user));
+            return Results.Ok(AppUserDto.from(foundUser));
         }
 
         return Results.Unauthorized();
     }).Produces(200, typeof(AppUserDto)).Produces(400, typeof(List<IdentityError>)).Produces(401);
+
+app.MapHub<ChatHub>("/chat").RequireAuthorization(loggedIn);
 
 app.MapPost("/register",
         async (UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, AppDb db, RegisterRequest req) =>
