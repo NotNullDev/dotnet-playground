@@ -3,6 +3,7 @@
 	import Button from '$lib/components/button.svelte';
 	import Input from '$lib/components/input.svelte';
 	import TextArea from '$lib/components/text-area.svelte';
+	import { showToast } from '$lib/components/toast/toast-store';
 	import { onMount } from 'svelte';
 	import type { components } from '../schema';
 
@@ -26,15 +27,24 @@
 		if (data) {
 			notes = data;
 		}
+		if (error) {
+			showToast('Failed to refetch notes.', 'Unknown error.');
+		}
 	}
 
 	async function createNote() {
-		await POST('/notes/', {
+		const { error } = await POST('/notes/', {
 			body: {
 				title: newNoteData.title,
 				content: newNoteData.content
 			}
 		});
+
+		if (error) {
+			showToast('Note creation failed', error.map((e) => e.errorMessage).join('\n'));
+			return;
+		}
+
 		newNoteData = {
 			title: '',
 			content: ''
@@ -47,7 +57,12 @@
 			console.warn('noteId is null!');
 			return;
 		}
-		await DELETE('/notes/{id}', { params: { path: { id: noteId } } });
+		const { error } = await DELETE('/notes/{id}', { params: { path: { id: noteId } } });
+
+		if (error) {
+			showToast('Note deletion failed.', 'Unknown error');
+		}
+
 		refetchData();
 	}
 </script>

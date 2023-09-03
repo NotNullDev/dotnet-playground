@@ -1,6 +1,8 @@
-<script lang="ts">
+ <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { GET } from '$lib/api';
 	import Button from '$lib/components/button.svelte';
+	import Toast from '$lib/components/toast/toast.svelte';
 	import { appStore } from '$lib/store';
 	import '../app.css';
 
@@ -12,10 +14,11 @@
 			return;
 		}
 		$appStore.user = null;
+		goto('/login');
 	}
 </script>
 
-<div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+<div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col overflow-hidden">
 	<header class="p-6 flex justify-between">
 		<a class="px-2 py-1 hover:bg-slate-800 rounded-md active:scale-90" href="/">Notes app</a>
 		{#if $appStore.user}
@@ -23,6 +26,7 @@
 		{/if}
 	</header>
 	<slot />
+	<Toast />
 </div>
 
 <style lang="postcss">

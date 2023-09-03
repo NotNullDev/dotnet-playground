@@ -1,7 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -42,7 +40,10 @@ builder.Services.AddRazorPages();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
-        policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod().Build()
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod().AllowCredentials().Build();
+        }
     );
 });
 
@@ -83,58 +84,59 @@ app.MapGet("/me", async (ClaimsPrincipal user, UserManager<AppUser> userManager)
     .Produces(200, typeof(AppUserDto))
     .Produces(403, typeof(string));
 
-app.MapPost("/login", async (SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, [FromBody]LoginRequest req) =>
-{
-    var user = new AppUser()
+app.MapPost("/login",
+    async (SignInManager<AppUser> signInManager, UserManager<AppUser> userManager, [FromBody] LoginRequest req) =>
     {
-        Email = req.Email,
-    };
-
-    var foundUser = await signInManager.UserManager.FindByEmailAsync(user.Email);
-    if (foundUser != null)
-    {
-        await signInManager.SignInAsync(foundUser, true);
-        return Results.Ok(AppUserDto.from(user));
-    }
-
-    return Results.Unauthorized();
-}).Produces(200, typeof(AppUserDto)).Produces(400, typeof(List<IdentityError>)).Produces(401);
-
-app.MapPost("/register",
-    async (UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, AppDb db, RegisterRequest req) =>
-    {
-        var validationResults = new List<ValidationResult>();
-        var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
-        if (!valid)
+        var user = new AppUser()
         {
-            return Results.BadRequest(validationResults);
-        }
-
-        var appuser = new AppUser()
-        {
-            UserName = req.Email.Split("@")[0].Replace(".", ""),
-            Email = req.Email
+            Email = req.Email,
         };
 
-        var result = await userManager.CreateAsync(appuser, req.Password);
-        if (!result.Succeeded)
+        var foundUser = await signInManager.UserManager.FindByEmailAsync(user.Email);
+        if (foundUser != null)
         {
-            return Results.BadRequest(result.Errors);
+            await signInManager.SignInAsync(foundUser, true);
+            return Results.Ok(AppUserDto.from(user));
         }
 
-        await signInManager.SignInAsync(appuser, true);
+        return Results.Unauthorized();
+    }).Produces(200, typeof(AppUserDto)).Produces(400, typeof(List<IdentityError>)).Produces(401);
 
-        return Results.Ok(AppUserDto.from(appuser));
-    })
+app.MapPost("/register",
+        async (UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, AppDb db, RegisterRequest req) =>
+        {
+            var validationResults = new List<ValidationResult>();
+            var valid = Validator.TryValidateObject(req, new ValidationContext(req), validationResults, true);
+            if (!valid)
+            {
+                return Results.BadRequest(validationResults);
+            }
+
+            var appuser = new AppUser()
+            {
+                UserName = req.Email.Split("@")[0].Replace(".", ""),
+                Email = req.Email
+            };
+
+            var result = await userManager.CreateAsync(appuser, req.Password);
+            if (!result.Succeeded)
+            {
+                return Results.BadRequest(result.Errors);
+            }
+
+            await signInManager.SignInAsync(appuser, true);
+
+            return Results.Ok(AppUserDto.from(appuser));
+        })
     .Produces(400, typeof(List<ValidationResult>))
     .Produces(400, typeof(List<IdentityError>))
     .Produces(200, typeof(AppUserDto))
-    .Accepts(typeof(RegisterRequest) , "application/json");
+    .Accepts(typeof(RegisterRequest), "application/json");
 
 app.MapGet("/logout", async (SignInManager<AppUser> singInManager) =>
 {
     await singInManager.SignOutAsync();
-    return Results.Redirect("/");
+    return Results.Ok();
 });
 
 app.MapGet("/", async (HttpContext ctx, UserManager<AppUser> userManager, ClaimsPrincipal user) =>
