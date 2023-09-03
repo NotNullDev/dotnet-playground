@@ -1,0 +1,31 @@
+{
+  auto_https off
+  admin off
+}
+
+# force http
+{$SERVER_NAME:localhost}:80
+
+encode gzip
+
+# https://caddyserver.com/docs/caddyfile/directives/handle_path
+handle /___/admin/* {
+    uri replace /___/admin /_/
+    reverse_proxy http://localhost:8090
+}
+
+handle /___/api/* {
+    uri replace /___/api /api
+    reverse_proxy http://localhost:8090
+}
+
+handle_path /api/* {
+    reverse_proxy http://localhost:8090
+}
+
+handle {
+    root * build
+
+    try_files {path} index.html
+    file_server
+}

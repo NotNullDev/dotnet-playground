@@ -10,12 +10,13 @@
 	} = {};
 </script>
 
-<label {...$$restProps} class={tw('flex gap-[1px] flex-col', classes.root)}>
+<label class={tw('flex gap-[1px] flex-col', classes.root)}>
 	<span class={tw(classes.span)}>{label}</span>
 	<input
 		class={tw('rounded-md bg-slate-800 px-2 py-1', classes.input)}
 		type="text"
 		{placeholder}
 		bind:value
+		{...$$restProps}
 	/>
 </label>

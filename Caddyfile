@@ -1,0 +1,20 @@
+{
+  auto_https off
+  admin off
+}
+
+# force http
+{$SERVER_NAME:localhost}:80
+
+encode gzip
+
+handle_path /api/* {
+    reverse_proxy http://localhost:5193
+}
+
+handle {
+    root * ui
+
+    try_files {path} index.html
+    file_server
+}

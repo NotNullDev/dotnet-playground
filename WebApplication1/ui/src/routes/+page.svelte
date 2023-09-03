@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { navigating } from '$app/stores';
 	import { DELETE, GET, POST } from '$lib/api';
 	import { sendMessage } from '$lib/chat';
 	import Button from '$lib/components/button.svelte';
@@ -12,10 +14,16 @@
 	let notes: components['schemas']['Note'][] = [];
 
 	onMount(async () => {
-		const { data, error } = await GET('/notes/', {});
+		const { data, error, response } = await GET('/notes/', {});
 		if (data) {
 			notes = data;
 		}
+
+		if (response.status === 401 && $navigating?.complete) {
+			await goto('/login');
+			return;
+		}
+
 		refetchData();
 	});
 
@@ -82,9 +90,12 @@
 	}
 </script>
 
-<div class="flex justify-around p-12 flex-col gap-12 flex-1 overflow-hidden h-full">
-	<div class="flex gap-12">
-		<div class="flex flex-col rounded-md p-4 gap-2 bg px-12 h-min">
+<div class="flex justify-around p-4 flex-col gap-12 flex-1">
+	<div class="flex gap-12 items-center justify-center">
+		<form
+			on:submit|preventDefault={createNote}
+			class="flex flex-col rounded-md p-6 gap-2 bg px-12 h-min items-center"
+		>
 			<h1 class="text-2xl mb-3">New note</h1>
 			<Input
 				label="Title"
@@ -105,13 +116,12 @@
 			<Button
 				classes={{
 					root: 'max-w-[200px] mt-1'
-				}}
-				on:click={createNote}>Create</Button
+				}}>Create</Button
 			>
-		</div>
+		</form>
 	</div>
 
-	<div class="flex gap-12 flex-1 overflow-hidden h-full justify-around">
+	<div class="flex gap-12 flex-1 h-full justify-around">
 		<div class="flex flex-col bg px-12 py-3 overflow-hidden h-[50vh] w-[40vw]">
 			<h2 class="text-2xl my-4">Notes</h2>
 			<div class="flex flex-col-reverse gap-4 w-full overflow-y-auto py-2">
@@ -137,10 +147,10 @@
 					</div>
 				{/each}
 			</div>
-			<div class="flex justify-between items-end gap-3">
+			<form on:submit|preventDefault={send} class="flex justify-between items-end gap-3">
 				<TextArea bind:value={chatMessage.message} classes={{ root: 'flex-1' }} />
-				<Button classes={{ root: 'w-[60px] h-min' }} on:click={send}>Send</Button>
-			</div>
+				<Button classes={{ root: 'w-[60px] h-min' }} type="submit">Send</Button>
+			</form>
 		</div>
 	</div>
 </div>

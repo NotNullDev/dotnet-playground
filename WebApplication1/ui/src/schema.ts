@@ -5,28 +5,6 @@
 
 
 export interface paths {
-  "/admin/": {
-    get: {
-      responses: {
-        /** @description Success */
-        200: {
-          content: {
-            "text/plain": string;
-          };
-        };
-      };
-    };
-  };
-  "/secured": {
-    get: {
-      responses: {
-        /** @description Success */
-        200: {
-          content: never;
-        };
-      };
-    };
-  };
   "/me": {
     get: {
       responses: {
@@ -62,7 +40,7 @@ export interface paths {
         /** @description Bad Request */
         400: {
           content: {
-            "application/json": components["schemas"]["IdentityError"][];
+            "application/json": components["schemas"]["LoginError"];
           };
         };
         /** @description Unauthorized */
@@ -89,7 +67,7 @@ export interface paths {
         /** @description Bad Request */
         400: {
           content: {
-            "application/json": components["schemas"]["IdentityError"][];
+            "application/json": components["schemas"]["RegisterError"];
           };
         };
       };
@@ -105,9 +83,6 @@ export interface paths {
       };
     };
   };
-  "/": {
-    get: operations["Get haha"];
-  };
   "/notes/": {
     get: {
       responses: {
@@ -120,18 +95,6 @@ export interface paths {
       };
     };
     post: operations["create note"];
-  };
-  "/notes/create": {
-    get: {
-      responses: {
-        /** @description Success */
-        200: {
-          content: {
-            "application/json": components["schemas"]["Note"];
-          };
-        };
-      };
-    };
   };
   "/notes/{id}": {
     delete: {
@@ -201,9 +164,9 @@ export interface components {
      * @enum {integer}
      */
     DayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    IdentityError: {
-      code?: string | null;
-      description?: string | null;
+    LoginError: {
+      validationError?: string[] | null;
+      error?: string | null;
     };
     LoginRequest: {
       /** Format: email */
@@ -217,6 +180,10 @@ export interface components {
       title: string;
       done?: boolean;
       owner?: components["schemas"]["AppUser"];
+    };
+    RegisterError: {
+      validationErrors?: string[] | null;
+      creationErrors?: string[] | null;
     };
     RegisterRequest: {
       /** Format: email */
@@ -241,14 +208,6 @@ export type external = Record<string, never>;
 
 export interface operations {
 
-  "Get haha": {
-    responses: {
-      /** @description Success */
-      200: {
-        content: never;
-      };
-    };
-  };
   "create note": {
     requestBody: {
       content: {

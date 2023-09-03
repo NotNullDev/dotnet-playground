@@ -1,3 +1,4 @@
+import { PUBLIC_CHAT_ENDPOINT, PUBLIC_SERVER_URL } from '$env/static/public';
 import { writable } from 'svelte/store';
 
 export type AppStore = {
@@ -17,6 +18,11 @@ export type AppStore = {
 			content: string;
 		}[];
 	};
+	env: {
+		serverUrl: string;
+		chatEndpoint: string;
+		loadedFromServer: boolean;
+	};
 };
 
 export const appStore = writable<AppStore>({
@@ -24,5 +30,10 @@ export const appStore = writable<AppStore>({
 	notes: [],
 	chat: {
 		messages: []
+	},
+	env: {
+		chatEndpoint: PUBLIC_CHAT_ENDPOINT,
+		serverUrl: PUBLIC_SERVER_URL,
+		loadedFromServer: false
 	}
 });
