@@ -8,7 +8,7 @@ export let { GET, POST, DELETE } = createClient<paths>({
 	credentials: 'include'
 });
 
-appStore.subscribe((store) => {
+appStore.subscribe(async (store) => {
 	if (store.env.loadedFromServer) {
 		appStore.subscribe((store) => {
 			if (store.env.loadedFromServer) {
@@ -16,7 +16,29 @@ appStore.subscribe((store) => {
 					baseUrl: store.env.serverUrl,
 					credentials: 'include'
 				}));
+				tryAuthSilent();
 			}
 		});
 	}
 });
+
+export async function tryAuthSilent(): Promise<boolean> {
+	let ok = false;
+	try {
+		const { data } = await GET('/me', {});
+
+		if (data?.id) {
+			appStore.update((store) => {
+				store.user = {
+					id: data.id ?? '',
+					email: data.email ?? ''
+				};
+				return store;
+			});
+			ok = true;
+		}
+	} catch (e) {
+		console.error(e);
+	}
+	return ok;
+}

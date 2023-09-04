@@ -1,7 +1,7 @@
 export const prerender = true;
 
 import { browser } from '$app/environment';
-import { GET } from '$lib/api';
+import { tryAuthSilent } from '$lib/api';
 import { appStore } from '$lib/store';
 import { redirect } from '@sveltejs/kit';
 import { get } from 'svelte/store';
@@ -30,24 +30,3 @@ export const load: LayoutLoad = async ({ route }) => {
 		}
 	}
 };
-
-async function tryAuthSilent(): Promise<boolean> {
-	let ok = false;
-	try {
-		const { data } = await GET('/me', {});
-
-		if (data?.id) {
-			appStore.update((store) => {
-				store.user = {
-					id: data.id ?? '',
-					email: data.email ?? ''
-				};
-				return store;
-			});
-			ok = true;
-		}
-	} catch (e) {
-		console.error(e);
-	}
-	return ok;
-}
